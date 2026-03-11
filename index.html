@@ -399,10 +399,7 @@
       <span class="sum-lbl">Total bryggertid</span>
       <span class="sum-val green" id="total-time">5:00</span>
     </div>
-    <div class="sum-row">
-      <span class="sum-lbl">Ferdig ca. kl.</span>
-      <span class="sum-val orange" id="finish-time">—</span>
-    </div>
+
   </div>
 
   <!-- Brew info -->
@@ -558,9 +555,11 @@ function renderSteps() {
   const list  = document.getElementById('steps-list');
   list.innerHTML = '';
 
-  // Find current step (the one we are currently "in")
+  // Only mark past/current if we are actually within the brew window
+  const brewEnd = startTime ? new Date(startTime.getTime() + totalDur()*60000) : null;
+  const brewingNow = startTime && startTime <= now && now <= brewEnd;
   let currentIdx = -1;
-  if (startTime) {
+  if (brewingNow) {
     for (let i = 0; i < steps.length - 1; i++) {
       if (times[i] <= now && (i === steps.length-2 || times[i+1] > now)) {
         currentIdx = i; break;
@@ -591,7 +590,7 @@ function renderSteps() {
     const row = document.createElement('div');
     row.className = 'step-row ph'+ph;
 
-    if (startTime) {
+    if (brewingNow) {
       if (i === currentIdx) row.classList.add('is-current');
       else if (i < currentIdx) row.classList.add('is-past');
     }
@@ -618,11 +617,11 @@ function renderSummary() {
   const ft = document.getElementById('ferdig-top');
   if (startTime) {
     const fin = new Date(startTime.getTime() + tot*60000);
-    document.getElementById('finish-time').textContent = fmtTime(fin);
+
     ft.textContent = 'Ferdig ca. kl. '+fmtTime(fin);
     ft.classList.remove('empty');
   } else {
-    document.getElementById('finish-time').textContent = '—';
+
     ft.textContent = 'Ferdig ca. —';
     ft.classList.add('empty');
   }
@@ -640,10 +639,20 @@ function renderNext() {
   for (let i=0; i<times.length; i++) { if (times[i] > now) { ni=i; break; } }
 
   if (ni === -1) {
-    document.getElementById('next-name').textContent = '✅ Brygging fullført!';
-    document.getElementById('next-time').textContent = '';
-    document.getElementById('next-countdown').textContent = '';
-    document.getElementById('next-subtitle').textContent = '';
+    const brewEnd2 = new Date(startTime.getTime() + totalDur()*60000);
+    if (brewEnd2 <= now) {
+      // Brew window is genuinely in the past
+      document.getElementById('next-name').textContent = '✅ Brygging fullført!';
+      document.getElementById('next-time').textContent = '';
+      document.getElementById('next-countdown').textContent = '';
+      document.getElementById('next-subtitle').textContent = '';
+    } else {
+      // Start time is set but brew hasn't begun yet
+      document.getElementById('next-name').textContent = steps[0].name;
+      document.getElementById('next-time').textContent = 'Planlagt kl. '+fmtTime(times[0]);
+      document.getElementById('next-countdown').textContent = '';
+      document.getElementById('next-subtitle').textContent = '';
+    }
     card.classList.add('visible');
     return;
   }
