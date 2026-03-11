@@ -549,14 +549,14 @@ function renderSteps() {
     if (phases > 1 && ph !== prevPhase && ph > 1) {
       const div = document.createElement('div');
       div.className = 'ph-divider phd'+ph;
-      div.innerHTML = ;
+      div.innerHTML = '<div class="ph-divider-line"></div><div class="ph-divider-lbl">'+PHASE_LABELS[phases][ph]+'</div><div class="ph-divider-line"></div>';
       list.appendChild(div);
     }
     // Add label for phase 1 start when phases>1
     if (phases > 1 && ph === 1 && prevPhase === 0) {
       const div = document.createElement('div');
       div.className = 'ph-divider phd1';
-      div.innerHTML = ;
+      div.innerHTML = '<div class="ph-divider-line"></div><div class="ph-divider-lbl">'+PHASE_LABELS[phases][1]+'</div><div class="ph-divider-line"></div>';
       list.appendChild(div);
     }
     prevPhase = ph;
@@ -571,10 +571,14 @@ function renderSteps() {
 
     const isLast = i === steps.length - 1;
     const durPart = !isLast
-      ? 
+      ? '<input type="number" class="step-dur" value="'+step.duration+'" min="0" max="999" '+(locked ? 'readonly' : '')+' onchange="updDur('+i+',this.value)" onblur="updDur('+i+',this.value)"><span>min</span>'
       : '';
 
-    row.innerHTML = ;
+    row.innerHTML =
+      '<div class="step-time">'+(times[i] ? fmtTime(times[i]) : '—')+'</div>'+
+      '<div class="step-icon">'+(STEP_ICONS[i]||'')+'</div>'+
+      '<div class="step-name'+(isLast?' final':'')+'">'+step.name+'</div>'+
+      '<div class="step-dur-wrap">'+durPart+'</div>';
 
     list.appendChild(row);
   });
