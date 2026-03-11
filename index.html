@@ -99,12 +99,12 @@
       text-align:center; letter-spacing:.04em;
     }
     .ferdig-top {
-      font-size:.7rem; font-weight:700; color:var(--accent);
+      font-size:.75rem; font-weight:800; color:#ffffff;
       text-align:center; white-space:nowrap;
-      background:rgba(244,164,41,.1); border-radius:8px;
-      padding:4px 8px; width:100%;
+      background:rgba(244,164,41,.22); border-radius:8px;
+      padding:5px 8px; width:100%; border:1px solid rgba(244,164,41,.35);
     }
-    .ferdig-top.empty { color:var(--muted); background:transparent; }
+    .ferdig-top.empty { color:var(--muted); background:rgba(255,255,255,.04); border-color:transparent; }
 
     /* Next event card */
     #next-card {
@@ -171,7 +171,17 @@
       background:rgba(244,164,41,.2) !important;
       border-color:var(--accent) !important;
     }
-    .step-row.is-past { opacity:.4; }
+    .step-row.is-past {
+      padding:4px 12px; margin-bottom:3px;
+      background:rgba(255,255,255,.02) !important;
+      border-color:rgba(255,255,255,.06) !important;
+    }
+    .step-row.is-past .step-time {
+      font-size:.78rem; color:#3d5568; min-width:38px;
+    }
+    .step-row.is-past .step-icon { opacity:.25; font-size:.75rem; }
+    .step-row.is-past .step-name { font-size:.72rem; color:#3d5568; font-weight:500; }
+    .step-row.is-past .step-dur-wrap { opacity:.3; }
 
     .step-time {
       font-size:.97rem; font-weight:700; min-width:44px;
@@ -436,6 +446,9 @@
       <button class="export-btn" onclick="exportCalendar()">
         📅 Kalender (.ics)
       </button>
+      <button class="export-btn" onclick="exportPNG()">
+        📸 Del som bilde
+      </button>
     </div>
   </div>
 
@@ -468,7 +481,7 @@ const DEFAULT_STEPS = [
   { name:'SKYLLE',          duration:30 },
   { name:'OPPVARMING',      duration:10 },
   { name:'KOK',             duration:60 },
-  { name:'Hopstand',        duration:30 },
+  { name:'Hopstand',        duration:0  },
   { name:'NEDKJØLING',      duration:5  },
   { name:'GJÆRINGSKAR',     duration:15 },
   { name:'VASKING',         duration:30 },
@@ -602,11 +615,16 @@ function renderSummary() {
   const tot = totalDur();
   const h = Math.floor(tot/60), m = tot%60;
   document.getElementById('total-time').textContent = h+':'+String(m).padStart(2,'0');
+  const ft = document.getElementById('ferdig-top');
   if (startTime) {
     const fin = new Date(startTime.getTime() + tot*60000);
     document.getElementById('finish-time').textContent = fmtTime(fin);
+    ft.textContent = 'Ferdig ca. kl. '+fmtTime(fin);
+    ft.classList.remove('empty');
   } else {
     document.getElementById('finish-time').textContent = '—';
+    ft.textContent = 'Ferdig ca. —';
+    ft.classList.add('empty');
   }
 }
 
@@ -865,6 +883,158 @@ function exportCalendar() {
   URL.revokeObjectURL(url);
   showToast('📅 Kalender eksportert!');
 }
+
+// ============================================================
+// EXPORT – PNG image (iPhone portrait)
+// ============================================================
+function exportPNG() {
+  if (!startTime) { showToast('Sett starttidspunkt først!'); return; }
+
+  const brewName  = document.getElementById('brew-name').value  || 'Brygg';
+  const brewers   = document.getElementById('brewers').value    || '';
+  const brewDate  = document.getElementById('brew-date').value  || '';
+  const times     = calcTimes();
+  const now       = new Date();
+  const tot       = totalDur();
+  const fin       = new Date(startTime.getTime() + tot*60000);
+
+  const W        = 750;
+  const PAD      = 40;
+  const STEP_H   = 58;
+  const HDR_H    = 190;
+  const FTR_H    = 80;
+  const totalH   = HDR_H + steps.length * STEP_H + FTR_H;
+
+  const canvas   = document.createElement('canvas');
+  canvas.width   = W;
+  canvas.height  = totalH;
+  const c        = canvas.getContext('2d');
+
+  // Helper: rounded rect
+  function rr(x,y,w,h,r,fill,stroke) {
+    c.beginPath();
+    c.moveTo(x+r,y); c.lineTo(x+w-r,y);
+    c.quadraticCurveTo(x+w,y,x+w,y+r);
+    c.lineTo(x+w,y+h-r); c.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+    c.lineTo(x+r,y+h); c.quadraticCurveTo(x,y+h,x,y+h-r);
+    c.lineTo(x,y+r); c.quadraticCurveTo(x,y,x+r,y);
+    c.closePath();
+    if (fill)  { c.fillStyle = fill;   c.fill(); }
+    if (stroke){ c.strokeStyle = stroke; c.lineWidth = 1.5; c.stroke(); }
+  }
+
+  // Phase colours
+  const phColors = {
+    1: { bg:'rgba(244,164,41,0.18)', bdr:'rgba(244,164,41,0.55)', bar:'#f4a429' },
+    2: { bg:'rgba(56,189,248,0.18)',  bdr:'rgba(56,189,248,0.55)',  bar:'#38bdf8' },
+    3: { bg:'rgba(74,222,128,0.18)', bdr:'rgba(74,222,128,0.55)', bar:'#4ade80'  },
+  };
+
+  // Background
+  c.fillStyle = '#0d1b2a';
+  c.fillRect(0, 0, W, totalH);
+
+  // Subtle top glow
+  const grd = c.createRadialGradient(W/2, 0, 0, W/2, 0, 320);
+  grd.addColorStop(0, 'rgba(244,164,41,0.12)');
+  grd.addColorStop(1, 'rgba(244,164,41,0)');
+  c.fillStyle = grd;
+  c.fillRect(0, 0, W, 320);
+
+  // ── Header
+  c.fillStyle = '#f4a429';
+  c.font = 'bold 52px -apple-system, sans-serif';
+  c.textAlign = 'center';
+  c.fillText('🍺 ' + brewName, W/2, 68);
+
+  c.fillStyle = '#7a9bb5';
+  c.font = '26px -apple-system, sans-serif';
+  if (brewers) c.fillText(brewers, W/2, 104);
+
+  c.fillStyle = '#e8f4fd';
+  c.font = 'bold 30px -apple-system, sans-serif';
+  const startStr = 'Start kl. ' + fmtTime(startTime) + '  →  Ferdig ca. kl. ' + fmtTime(fin);
+  c.fillText(startStr, W/2, brewers ? 140 : 120);
+
+  if (brewDate) {
+    c.fillStyle = '#7a9bb5';
+    c.font = '24px -apple-system, sans-serif';
+    c.fillText(brewDate, W/2, brewers ? 172 : 152);
+  }
+
+  // Divider line
+  c.strokeStyle = 'rgba(255,255,255,0.08)';
+  c.lineWidth = 1;
+  c.beginPath(); c.moveTo(PAD, HDR_H-10); c.lineTo(W-PAD, HDR_H-10); c.stroke();
+
+  // ── Steps
+  steps.forEach((step, i) => {
+    const y    = HDR_H + i * STEP_H;
+    const ph   = phaseOf(i);
+    const col  = phColors[ph];
+    const t    = times[i];
+    const isPast    = t && times[i+1] && times[i+1] <= now;
+    const isCurrent = t && t <= now && (!times[i+1] || times[i+1] > now);
+    const isLast    = i === steps.length - 1;
+
+    const rowX = PAD, rowW = W - PAD*2, rowH = STEP_H - 6;
+
+    if (isPast) {
+      rr(rowX, y+2, rowW, rowH-2, 8, 'rgba(255,255,255,0.025)', 'rgba(255,255,255,0.05)');
+    } else if (isCurrent) {
+      rr(rowX, y+2, rowW, rowH-2, 8, 'rgba(244,164,41,0.22)', '#f4a429');
+    } else {
+      rr(rowX, y+2, rowW, rowH-2, 8, col.bg, col.bdr);
+    }
+
+    // Phase bar
+    if (!isPast) {
+      c.fillStyle = col.bar;
+      c.beginPath();
+      c.roundRect ? c.roundRect(rowX, y+2, 5, rowH-2, [8,0,0,8]) : c.fillRect(rowX,y+2,5,rowH-2);
+      c.fill();
+    }
+
+    // Time
+    c.textAlign = 'left';
+    c.font = isPast ? '400 26px monospace' : 'bold 28px monospace';
+    c.fillStyle = isPast ? '#2d4455' : (isCurrent ? '#f4a429' : '#e8f4fd');
+    c.fillText(t ? fmtTime(t) : '—', rowX+18, y + STEP_H/2 + 9);
+
+    // Name
+    c.font = isPast ? '400 24px -apple-system,sans-serif' : (isLast ? 'bold 26px -apple-system,sans-serif' : '600 26px -apple-system,sans-serif');
+    c.fillStyle = isPast ? '#2d4455' : (isLast ? '#4ade80' : (isCurrent ? '#fff' : '#e8f4fd'));
+    c.fillText(step.name, rowX + 140, y + STEP_H/2 + 9);
+
+    // Duration
+    if (!isLast && step.duration > 0 && !isPast) {
+      c.textAlign = 'right';
+      c.font = '22px -apple-system,sans-serif';
+      c.fillStyle = '#7a9bb5';
+      c.fillText(step.duration + ' min', rowX + rowW - 14, y + STEP_H/2 + 8);
+    }
+  });
+
+  // ── Footer
+  const fy = totalH - FTR_H + 30;
+  c.textAlign = 'center';
+  c.fillStyle = 'rgba(255,255,255,0.12)';
+  c.fillRect(0, totalH - FTR_H, W, 1);
+  c.font = '22px -apple-system,sans-serif';
+  c.fillStyle = '#3d5568';
+  c.fillText("Bull Balls' Brewery  🍺  Bryggetidskalkulator", W/2, fy + 20);
+
+  canvas.toBlob(blob => {
+    const url = URL.createObjectURL(blob);
+    const a   = document.createElement('a');
+    a.href     = url;
+    a.download = 'brygg-' + brewName.replace(/\s+/g,'-').toLowerCase() + '.png';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast('📸 Bilde lagret!');
+  }, 'image/png');
+}
+
 
 // ============================================================
 // TOAST
