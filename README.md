@@ -18,15 +18,15 @@
 | Temp til utmesk | 15 min |
 | Utmesk | 10 min |
 | Skylle | 30 min |
-| Oppvarming kok | 10 min |
+| Oppvarming | 10 min |
 | Kok | 60 min |
-| Hopstand | 30 min |
+| Hopstand | 0 min* |
 | Nedkjøling | 5 min |
 | Gjæringskar | 15 min |
 | Vasking | 30 min |
 
-**Fasevisning**
-Velg 1, 2 eller 3 faser – hendelsene farges og grupperes for lettere oversikt under bryggedagen.
+**Øktvisning**
+Velg 1, 2 eller 3 økter – hendelsene farges og grupperes med tydelige skillelinjer for lettere oversikt under bryggedagen.
 
 **Redigerbare varigheter**
 Lås opp varighetsfeltene for å tilpasse tidene til ditt brygg. Alle klokkeslett oppdateres øyeblikkelig.
@@ -38,10 +38,13 @@ Varsles 2 minutter før hvert nytt steg med lyd og in-app-alarm. Støtter native
 
 **Eksport**
 - 📊 **Excel/CSV** – eksporter hele bryggetidsplanen med brygginfo
-- 📅 **Kalender (.ics)** – importer til Kalender/Outlook med bryggfaser som separate hendelser
+- 📅 **Kalender (.ics)** – importer til Kalender/Outlook med bryggøkter som separate hendelser
+- 📸 **Del som bilde (.png)** – genererer et pent portrettbilde av bryggeplan med alle steg og klokkeslett, tilpasset deling fra iPhone
 
 **Brygginfo**
-Lagre navn på brygg, bryggere og bryggedato som vises i eksporten.
+Lagre navn på brygg, bryggere og bryggedato som vises i eksporten. Bryggernavn huskes automatisk til neste gang.
+
+*\* Hopstand er satt til 0 min som standard og kan justeres ved behov.*
 
 ## Bruk
 
