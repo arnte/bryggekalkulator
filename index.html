@@ -674,15 +674,27 @@ function brewNow() {
   const hh = String(now.getHours()).padStart(2,'0');
   const mm = String(now.getMinutes()).padStart(2,'0');
   document.getElementById('start-time').value = hh+':'+mm;
+  // Pin brew-date to today so "active brew" logic works correctly
+  document.getElementById('brew-date').value = now.toISOString().split('T')[0];
   onTimeChange();
+}
+
+function getBrewBaseDate() {
+  // Use brew-date field if set, otherwise today
+  const dateVal = document.getElementById('brew-date').value;
+  if (dateVal) {
+    const [y,mo,d] = dateVal.split('-').map(Number);
+    return new Date(y, mo-1, d);
+  }
+  return new Date();
 }
 
 function onTimeChange() {
   const val = document.getElementById('start-time').value;
   if (!val) { startTime=null; render(); clearTimers(); return; }
   const [hh,mm] = val.split(':').map(Number);
-  const today = new Date();
-  startTime = new Date(today.getFullYear(), today.getMonth(), today.getDate(), hh, mm, 0, 0);
+  const base = getBrewBaseDate();
+  startTime = new Date(base.getFullYear(), base.getMonth(), base.getDate(), hh, mm, 0, 0);
   render();
   scheduleNotifs();
 }
@@ -1060,7 +1072,8 @@ function showToast(msg) {
 // INIT
 // ============================================================
 document.getElementById('start-time').addEventListener('input', onTimeChange);
-document.getElementById('start-time').addEventListener('change', onTimeChange);
+  document.getElementById('start-time').addEventListener('change', onTimeChange);
+  document.getElementById('brew-date').addEventListener('change', onTimeChange);
 
 // Notification status on load
 if ('Notification' in window) {
