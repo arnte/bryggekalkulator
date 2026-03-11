@@ -1,6 +1,6 @@
 # 🍺 Bryggetidskalkulator
 
-**Bull Balls' Brewery** sin offisielle bryggetidskalkulator – en mobiloptimalisert webapp for å holde styr på alle stegene i bryggeprosessen.
+**Bull Balls' Brewery** sin offisielle bryggetidskalkulator ut fra vanlig tidsbruk i bryggeriet – en mobiloptimalisert webapp for å holde styr på alle stegene i bryggeprosessen.
 
 ## Funksjoner
 
