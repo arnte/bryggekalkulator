@@ -5,7 +5,7 @@
 ## Funksjoner
 
 **Tidsstyring**
-- Skriv inn starttidspunkt, og alle påfølgende klokkeslett beregnes automatisk
+- Skriv inn starttidspunkt, og alle påfølgende klokkeslett beregnes automatisk ut fra hvor lang tid det vanligvis tar i BBB-bryggeri 
 - Trykk «Brygg nå»-knappen for å bruke nåværende tidspunkt som start
 - Sanntids nedtelling til neste hendelse, oppdateres hvert sekund
 
