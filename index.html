@@ -612,6 +612,13 @@ function fmtTime(d) {
   return d.toLocaleTimeString('no-NO',{hour:'2-digit',minute:'2-digit'});
 }
 
+function fmtDate(isoStr) {
+  // Convert YYYY-MM-DD  →  DD.MM.YYYY
+  if (!isoStr) return '';
+  const parts = isoStr.split('-');
+  return parts[2]+'.'+parts[1]+'.'+parts[0];
+}
+
 function fmtCountdown(ms) {
   if (ms <= 0) return '0:00';
   const totSec = Math.floor(ms / 1000);
@@ -931,7 +938,7 @@ function exportExcel() {
   let csv = 'BRYGGETIDSKALKULATOR\n';
   csv += 'Navn på brygg;'+brewName+'\n';
   csv += 'Bryggere;'+brewers+'\n';
-  csv += 'Bryggedato;'+brewDate+'\n\n';
+  csv += 'Bryggedato;'+fmtDate(brewDate)+'\n\n';
   csv += 'Tidspunkt;Hendelse;Varighet (min)\n';
   steps.forEach((s,i) => {
     csv += (times[i]?fmtTime(times[i]):'—')+';'+s.name+';'+(s.duration>0?s.duration:'')+'\n';
@@ -1091,7 +1098,7 @@ function exportPNG() {
   if (brewDate) {
     c.fillStyle = '#7a9bb5';
     c.font = '24px -apple-system, sans-serif';
-    c.fillText(brewDate, W/2, brewers ? 172 : 152);
+    c.fillText(fmtDate(brewDate), W/2, brewers ? 172 : 152);
   }
 
   // Divider line
