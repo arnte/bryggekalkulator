@@ -555,6 +555,7 @@
   <button class="xbar-btn" onclick="exportExcel()" title="Eksporter til Excel/CSV">📊 Excel</button>
   <button class="xbar-btn" onclick="exportCalendar()" title="Eksporter til kalender">📅 Kalender</button>
   <button class="xbar-btn xbar-primary" onclick="exportPNG()" title="Del som bilde">📸 Del bilde</button>
+  <button class="xbar-btn" onclick="shareInvite()" title="Del invitasjon til brygg">🔗 Inviter</button>
 </div>
 
 <div id="toast"></div>
@@ -1282,6 +1283,47 @@ function restoreState() {
   } catch(e) { return false; }
 }
 
+function shareInvite() {
+  const state = {
+    brewName:  document.getElementById('brew-name').value,
+    brewers:   document.getElementById('brewers').value,
+    brewDate:  document.getElementById('brew-date').value,
+    startTime: document.getElementById('start-time').value,
+    phases:    phases,
+    durations: steps.map(s => s.duration),
+  };
+  const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(state))));
+  const url = location.origin + location.pathname + '#b=' + encoded;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(url)
+      .then(() => showToast('🔗 Invitasjonslenke kopiert!'))
+      .catch(() => { prompt('Kopier lenken:', url); });
+  } else {
+    prompt('Kopier lenken:', url);
+  }
+}
+
+function restoreFromHash() {
+  try {
+    const hash = location.hash;
+    if (!hash.startsWith('#b=')) return false;
+    const decoded = decodeURIComponent(escape(atob(hash.slice(3))));
+    const s = JSON.parse(decoded);
+    if (s.brewName)  document.getElementById('brew-name').value  = s.brewName;
+    if (s.brewers)   document.getElementById('brewers').value    = s.brewers;
+    if (s.brewDate)  document.getElementById('brew-date').value  = s.brewDate;
+    if (s.startTime) document.getElementById('start-time').value = s.startTime;
+    if (Array.isArray(s.durations) && s.durations.length === steps.length) {
+      s.durations.forEach((d, i) => { steps[i].duration = d; });
+    }
+    if (typeof s.phases === 'number') setPhases(s.phases);
+    if (s.startTime || s.brewDate) onTimeChange();
+    history.replaceState(null, '', location.pathname);
+    showToast('🍺 Brygg lastet fra invitasjonslenke!');
+    return true;
+  } catch(e) { return false; }
+}
+
 function resetState() {
   if (!confirm('Nullstille og starte nytt brygg?')) return;
   localStorage.removeItem(STORAGE_KEY);
@@ -1328,8 +1370,8 @@ if ('Notification' in window) {
   document.getElementById('notif-btn').style.display = 'none';
 }
 
-// Restore last brew, or default to today's date
-if (!restoreState()) {
+// Restore from share-link first, then localStorage, then default to today's date
+if (!restoreFromHash() && !restoreState()) {
   document.getElementById('brew-date').value = new Date().toISOString().split('T')[0];
 }
 
