@@ -373,17 +373,17 @@
     /* Toast */
     #toast {
       position:fixed;
-      bottom:calc(64px + env(safe-area-inset-bottom));
-      left:50%;
-      transform:translateX(-50%) translateY(90px);
+      bottom:calc(68px + env(safe-area-inset-bottom));
+      left:50%; transform:translateX(-50%);
       background:#1a3050; border:1px solid var(--accent);
       border-radius:12px; padding:11px 20px; color:var(--text);
       font-size:.88rem; font-weight:600; z-index:999;
-      transition:transform .3s ease; white-space:nowrap;
-      box-shadow:0 4px 20px rgba(0,0,0,0.5);
-      cursor:pointer;
+      white-space:nowrap; box-shadow:0 4px 20px rgba(0,0,0,0.5);
+      cursor:pointer; user-select:none;
+      opacity:0; visibility:hidden; pointer-events:none;
+      transition:opacity .25s ease, visibility .25s ease;
     }
-    #toast.show { transform:translateX(-50%) translateY(0); }
+    #toast.show { opacity:1; visibility:visible; pointer-events:auto; }
 
     /* Alert overlay */
     #alert-ov {
@@ -589,7 +589,7 @@ const PHASE3B_START = 8; // third phase starts here for 3-phase
 
 const PHASE_LABELS = {
   2: { 1:'🌾 Del 1 – Mesking', 2:'🔥 Del 2 – Kok & Kjøling' },
-  3: { 1:'🌾 Del 1 – Mesking', 2:'🔥 Del 2 – Lauting & Kok', 3:'❄️ Del 3 – Hopstand & Kjøling' }
+  3: { 1:'🌾 Del 1 – Mesking', 2:'🔥 Del 2 – Utmesk & Kok', 3:'❄️ Del 3 – Hopstand & Kjøling' }
 };
 
 // ============================================================
@@ -640,6 +640,11 @@ function fmtCountdown(ms) {
   const h = Math.floor(totSec / 3600);
   const m = Math.floor((totSec % 3600) / 60);
   const s = totSec % 60;
+  if (ms > 24 * 3600 * 1000) {
+    const d = Math.floor(h / 24);
+    const hRem = h % 24;
+    return d+'d '+hRem+'t '+m+'m';
+  }
   if (h > 0) return h+'t '+m+'m';
   return m+':'+String(s).padStart(2,'0');
 }
@@ -1039,7 +1044,7 @@ function exportCalendar() {
       : [0, PHASE3A_START, PHASE3B_START];
     const phaseNames = phases === 2
       ? ['Økt 1 – Mesking', 'Økt 2 – Kok & kjøling']
-      : ['Økt 1 – Mesking', 'Økt 2 – Lauting & kok', 'Økt 3 – Hopstand & kjøling'];
+      : ['Økt 1 – Mesking', 'Økt 2 – Utmesk & Kok', 'Økt 3 – Hopstand & kjøling'];
 
     splits.forEach((startIdx, pi) => {
       const nextStartIdx = splits[pi + 1] !== undefined ? splits[pi + 1] : steps.length - 1;
@@ -1236,10 +1241,10 @@ function showToast(msg) {
   clearTimeout(toastTm);
   toastTm = setTimeout(() => el.classList.remove('show'), 5000);
 }
-document.addEventListener('DOMContentLoaded', () => {
-  document.getElementById('toast').addEventListener('click', () => {
-    document.getElementById('toast').classList.remove('show');
-  });
+// Click anywhere on toast to dismiss immediately
+document.getElementById('toast').addEventListener('click', function() {
+  clearTimeout(toastTm);
+  this.classList.remove('show');
 });
 
 // ============================================================
@@ -1330,7 +1335,9 @@ if (!restoreState()) {
 
   // Save on brew-name and brewers input
   document.getElementById('brew-name').addEventListener('input', saveState);
+  document.getElementById('brew-name').addEventListener('change', saveState);
   document.getElementById('brewers').addEventListener('input', saveState);
+  document.getElementById('brewers').addEventListener('change', saveState);
 
 // Live countdown
 cInterval = setInterval(() => { if (startTime) { renderNext(); renderProgress(); } }, 1000);
