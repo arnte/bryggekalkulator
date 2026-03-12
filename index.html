@@ -54,6 +54,17 @@
       -webkit-text-fill-color:var(--muted);
     }
 
+    /* Brew title */
+    .brew-title-wrap { margin-bottom:10px; }
+    .brew-title-input {
+      width:100%; background:transparent; border:none; border-bottom:2px solid var(--cborder);
+      color:var(--accent); font-size:1.35rem; font-weight:800; letter-spacing:-.02em;
+      padding:6px 4px; outline:none; text-align:center;
+      transition:border-color .2s;
+    }
+    .brew-title-input:focus { border-color:var(--accent); }
+    .brew-title-input::placeholder { color:rgba(244,164,41,.35); font-weight:600; }
+
     /* Cards */
     .card {
       background:var(--card); border:1px solid var(--cborder);
@@ -76,6 +87,21 @@
       font-variant-numeric:tabular-nums; letter-spacing:.05em;
     }
     input[type="time"]:focus { border-color:var(--accent); }
+
+    .date-row {
+      display:flex; align-items:center; gap:8px; margin-top:10px;
+      padding-top:10px; border-top:1px solid rgba(255,255,255,.06);
+    }
+    .date-label {
+      font-size:.72rem; font-weight:600; color:var(--muted);
+      text-transform:uppercase; letter-spacing:.06em; white-space:nowrap;
+    }
+    .date-input {
+      flex:1; background:rgba(255,255,255,.06); border:1px solid var(--cborder);
+      border-radius:8px; color:var(--text); font-size:.88rem;
+      padding:7px 10px; outline:none; -webkit-appearance:none;
+    }
+    .date-input:focus { border-color:var(--accent); }
 
     .start-right {
       display:flex; flex-direction:column; align-items:center;
@@ -126,6 +152,29 @@
       text-align:right; white-space:nowrap;
     }
     .next-subtitle { font-size:.72rem; color:var(--muted); text-align:right; margin-top:1px; }
+
+    /* Progress bar */
+    .progress-wrap { margin-bottom:12px; }
+    .progress-track {
+      width:100%; height:6px; background:rgba(255,255,255,.08);
+      border-radius:3px; overflow:hidden;
+    }
+    .progress-fill {
+      height:100%; width:0%;
+      background:linear-gradient(90deg,#f4a429,#ff7f2a);
+      border-radius:3px; transition:width 1s ease;
+    }
+    .progress-labels {
+      display:flex; justify-content:space-between; align-items:center;
+      margin-top:4px;
+    }
+    .progress-pct {
+      font-size:.72rem; font-weight:800; color:var(--accent);
+      font-variant-numeric:tabular-nums;
+    }
+    .progress-elapsed {
+      font-size:.68rem; color:var(--muted);
+    }
 
     /* Phase selector */
     .phase-row { display:flex; gap:8px; margin-bottom:12px; }
@@ -287,9 +336,32 @@
     .export-btn:hover { border-color:var(--accent); color:var(--accent); }
     .export-btn:active { transform:scale(.97); }
 
+    /* Fixed export bar */
+    .export-bar {
+      position:fixed; bottom:0; left:0; right:0;
+      display:flex; gap:1px; z-index:50;
+      background:rgba(13,27,42,.96);
+      border-top:1px solid rgba(255,255,255,.1);
+      backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+      padding:8px 12px; padding-bottom:max(8px, env(safe-area-inset-bottom));
+    }
+    .xbar-btn {
+      flex:1; display:flex; align-items:center; justify-content:center;
+      gap:5px; background:rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.1); border-radius:8px;
+      color:var(--muted); font-size:.76rem; font-weight:600;
+      padding:10px 6px; cursor:pointer;
+      transition:all .15s; -webkit-tap-highlight-color:transparent;
+    }
+    .xbar-btn:active { transform:scale(.96); opacity:.8; }
+    .xbar-primary {
+      background:rgba(244,164,41,.15); border-color:rgba(244,164,41,.35);
+      color:var(--accent);
+    }
+
     /* Toast */
     #toast {
-      position:fixed; bottom:28px; left:50%;
+      position:fixed; bottom:70px; left:50%;
       transform:translateX(-50%) translateY(80px);
       background:#1a3050; border:1px solid var(--accent);
       border-radius:12px; padding:11px 20px; color:var(--text);
@@ -343,6 +415,11 @@
     </div>
   </header>
 
+  <!-- Brew name as editable title -->
+  <div class="brew-title-wrap">
+    <input class="brew-title-input" id="brew-name" type="text" placeholder="Navn på brygg (f.eks. Vinnerpils)" autocomplete="off">
+  </div>
+
   <!-- Start time -->
   <div class="card">
     <div class="card-title">Starttidspunkt</div>
@@ -358,6 +435,10 @@
       <div class="ferdig-top empty" id="ferdig-top">Ferdig ca. —</div>
       </div>
     </div>
+    <div class="date-row">
+      <label class="date-label" for="brew-date">Bryggedato:</label>
+      <input class="date-input" id="brew-date" type="date">
+    </div>
   </div>
 
   <!-- Next event card -->
@@ -372,6 +453,17 @@
         <div class="next-countdown" id="next-countdown">—</div>
         <div class="next-subtitle" id="next-subtitle"></div>
       </div>
+    </div>
+  </div>
+
+  <!-- Progress bar -->
+  <div id="progress-wrap" class="progress-wrap" style="display:none">
+    <div class="progress-track">
+      <div class="progress-fill" id="progress-fill"></div>
+    </div>
+    <div class="progress-labels">
+      <span class="progress-pct" id="progress-pct">0%</span>
+      <span class="progress-elapsed" id="progress-elapsed"></span>
     </div>
   </div>
 
@@ -405,18 +497,12 @@
   <!-- Brew info -->
   <div class="card">
     <div class="card-title">Brygginfo</div>
-    <div class="info-field">
-      <div class="info-lbl">Navn på brygg</div>
-      <input class="info-input" id="brew-name" type="text" placeholder="f.eks. Vinnerpils, Supersonic e.l.">
-    </div>
+
     <div class="info-field">
       <div class="info-lbl">Bryggere</div>
       <input class="info-input" id="brewers" type="text" placeholder="Navn på bryggere">
     </div>
-    <div class="info-field">
-      <div class="info-lbl">Bryggedato</div>
-      <input class="info-input" id="brew-date" type="date">
-    </div>
+
   </div>
 
   <!-- Notifications -->
@@ -433,21 +519,8 @@
     </div>
   </div>
 
-  <!-- Export -->
-  <div class="card">
-    <div class="card-title">Eksporter</div>
-    <div class="export-row">
-      <button class="export-btn" onclick="exportExcel()">
-        📊 Excel / CSV
-      </button>
-      <button class="export-btn" onclick="exportCalendar()">
-        📅 Kalender (.ics)
-      </button>
-      <button class="export-btn" onclick="exportPNG()">
-        📸 Del som bilde
-      </button>
-    </div>
-  </div>
+  <!-- Export (space for fixed bar) -->
+  <div style="height:60px"></div>
 
   <footer>🍺 Bryggetidskalkulator · Bull Balls' Brewery</footer>
 </div>
@@ -462,6 +535,13 @@
   </div>
 </div>
 
+<!-- Fixed export bar -->
+<div class="export-bar">
+  <button class="xbar-btn" onclick="exportExcel()" title="Eksporter til Excel/CSV">📊 Excel</button>
+  <button class="xbar-btn" onclick="exportCalendar()" title="Eksporter til kalender">📅 Kalender</button>
+  <button class="xbar-btn xbar-primary" onclick="exportPNG()" title="Del som bilde">📸 Del bilde</button>
+</div>
+
 <div id="toast"></div>
 
 <script>
@@ -473,12 +553,12 @@ const DEFAULT_STEPS = [
   { name:'OPPKOBLING',      duration:5  },
   { name:'OPPVARMING',      duration:30 },
   { name:'MESKING',         duration:60 },
-  { name:'Temp til UTMESK', duration:15 },
+  { name:'TEMP UTMESK',      duration:15 },
   { name:'UTMESK',          duration:10 },
   { name:'SKYLLE',          duration:30 },
   { name:'OPPVARMING',      duration:10 },
   { name:'KOK',             duration:60 },
-  { name:'Hopstand',        duration:0  },
+  { name:'HOPSTAND',          duration:0  },
   { name:'NEDKJØLING',      duration:5  },
   { name:'GJÆRINGSKAR',     duration:15 },
   { name:'VASKING',         duration:30 },
@@ -547,7 +627,7 @@ function totalDur() { return steps.slice(0,-1).reduce((a,s)=>a+s.duration,0); }
 // ============================================================
 // RENDER
 // ============================================================
-function render() { renderSteps(); renderSummary(); renderNext(); }
+function render() { renderSteps(); renderSummary(); renderNext(); renderProgress(); }
 
 function renderSteps() {
   const times = calcTimes();
@@ -664,6 +744,37 @@ function renderNext() {
   const ms = times[ni] - now;
   document.getElementById('next-countdown').textContent = fmtCountdown(ms);
   document.getElementById('next-subtitle').textContent = ms < 60000 ? 'snart!' : 'igjen';
+}
+
+// ============================================================
+// PROGRESS BAR
+// ============================================================
+function renderProgress() {
+  const wrap = document.getElementById('progress-wrap');
+  const tot  = totalDur();
+  if (!startTime || tot === 0) { wrap.style.display = 'none'; return; }
+
+  const now    = new Date();
+  const end    = new Date(startTime.getTime() + tot*60000);
+  const brewOn = startTime <= now && now <= end;
+
+  if (!brewOn) { wrap.style.display = 'none'; return; }
+
+  wrap.style.display = '';
+  const elapsed = (now - startTime) / 60000; // minutes
+  const pct     = Math.min(100, Math.max(0, (elapsed / tot) * 100));
+
+  document.getElementById('progress-fill').style.width = pct.toFixed(1) + '%';
+  document.getElementById('progress-pct').textContent  = Math.round(pct) + '%';
+
+  const eH = Math.floor(elapsed / 60);
+  const eM = Math.round(elapsed % 60);
+  const rM = Math.round(tot - elapsed);
+  const rH = Math.floor(rM / 60);
+  const rMin = rM % 60;
+  document.getElementById('progress-elapsed').textContent =
+    eH > 0 ? eH+'t '+eM+'m brukt • ca. '+rH+'t '+rMin+'m igjen'
+           : eM+' min brukt • ca. '+(rH>0?rH+'t ':'')+rMin+' min igjen';
 }
 
 // ============================================================
@@ -1105,7 +1216,7 @@ document.getElementById('brew-date').value = new Date().toISOString().split('T')
   });
 
 // Live countdown
-cInterval = setInterval(() => { if (startTime) renderNext(); }, 1000);
+cInterval = setInterval(() => { if (startTime) { renderNext(); renderProgress(); } }, 1000);
 
 // Initial render
 render();
