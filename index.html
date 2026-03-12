@@ -982,45 +982,79 @@ function exportCalendar() {
   const times    = calcTimes();
   const brewName = document.getElementById('brew-name').value || 'Brygg';
   const brewers  = document.getElementById('brewers').value  || '';
+  const brewDate = document.getElementById('brew-date').value || '';
   const tot      = totalDur();
   const endTime  = new Date(startTime.getTime()+tot*60000);
 
+  // ICS timestamp: strip separators from ISO string
   function toICS(d) { return d.toISOString().replace(/[-:]/g,'').replace(/\.\d{3}/,''); }
-  function esc(s)   { return s.replace(/[\;,]/g,'\$&').replace(/\n/g,'\n'); }
 
-  // Build description
-  let desc = brewers ? 'Bryggere: '+brewers+'\n\n' : '';
-  steps.forEach((s,i) => {
-    if (times[i]) desc += fmtTime(times[i])+' – '+s.name+(s.duration>0?' ('+s.duration+' min)':'')+('\n');
-  });
+  // Escape ICS special chars; use literal \n for line breaks inside DESCRIPTION
+  function esc(s) {
+    return s
+      .replace(/\\/g, '\\\\')
+      .replace(/;/g, '\;')
+      .replace(/,/g, '\\,')
+      .replace(/\n/g, '\\n');
+  }
 
+  // Build step list for a range of step indices (inclusive)
+  function stepLines(fromIdx, toIdx) {
+    let out = '';
+    for (let i = fromIdx; i <= toIdx; i++) {
+      if (!times[i]) continue;
+      out += fmtTime(times[i]) + ' – ' + steps[i].name;
+      if (steps[i].duration > 0) out += ' (' + steps[i].duration + ' min)';
+      out += '\n';
+    }
+    return out;
+  }
+
+  // Full description for main event
+  let mainDesc = '';
+  if (brewers)  mainDesc += 'Bryggere: ' + brewers + '\n';
+  if (brewDate) mainDesc += 'Dato: ' + fmtDate(brewDate) + '\n';
+  mainDesc += '\n';
+  mainDesc += stepLines(0, steps.length - 1);
+
+  const uid = Date.now();
   let ics = 'BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//BBB Bryggetidskalkulator//NO\r\nCALSCALE:GREGORIAN\r\nMETHOD:PUBLISH\r\n';
 
-  // Main event
+  // ── Main event (full brew)
   ics += 'BEGIN:VEVENT\r\n';
-  ics += 'UID:brew-main-'+Date.now()+'@bbb\r\n';
-  ics += 'DTSTART:'+toICS(startTime)+'\r\n';
-  ics += 'DTEND:'+toICS(endTime)+'\r\n';
-  ics += 'SUMMARY:'+esc('Brygg: '+brewName)+'\r\n';
-  ics += 'DESCRIPTION:'+esc(desc)+'\r\n';
+  ics += 'UID:brew-main-' + uid + '@bbb\r\n';
+  ics += 'DTSTART:' + toICS(startTime) + '\r\n';
+  ics += 'DTEND:'   + toICS(endTime)   + '\r\n';
+  ics += 'SUMMARY:' + esc('BBB: ' + brewName) + '\r\n';
+  ics += 'DESCRIPTION:' + esc(mainDesc) + '\r\n';
   ics += 'END:VEVENT\r\n';
 
-  // Phase events
+  // ── Phase sub-events (if 2 or 3 økter)
   if (phases > 1) {
-    const splits = phases===2 ? [0, PHASE2_START] : [0, PHASE3A_START, PHASE3B_START];
-    const names  = phases===2
-      ? ['Del 1 – Mesking','Del 2 – Kok & Kjøling']
-      : ['Del 1 – Mesking','Del 2 – Lauting & Kok','Del 3 – Hopstand & Kjøling'];
+    const splits = phases === 2
+      ? [0, PHASE2_START]
+      : [0, PHASE3A_START, PHASE3B_START];
+    const phaseNames = phases === 2
+      ? ['Økt 1 – Mesking', 'Økt 2 – Kok & kjøling']
+      : ['Økt 1 – Mesking', 'Økt 2 – Lauting & kok', 'Økt 3 – Hopstand & kjøling'];
 
-    splits.forEach((si, pi) => {
-      const ps = times[si];
-      const pe = splits[pi+1] ? times[splits[pi+1]] : endTime;
+    splits.forEach((startIdx, pi) => {
+      const nextStartIdx = splits[pi + 1] !== undefined ? splits[pi + 1] : steps.length - 1;
+      const ps = times[startIdx];
+      const pe = splits[pi + 1] !== undefined ? times[splits[pi + 1]] : endTime;
       if (!ps || !pe) return;
+
+      // Steps belonging to this phase
+      let phaseDesc = '';
+      if (brewers) phaseDesc += 'Bryggere: ' + brewers + '\n\n';
+      phaseDesc += stepLines(startIdx, nextStartIdx - 1);
+
       ics += 'BEGIN:VEVENT\r\n';
-      ics += 'UID:brew-ph'+(pi+1)+'-'+Date.now()+'@bbb\r\n';
-      ics += 'DTSTART:'+toICS(ps)+'\r\n';
-      ics += 'DTEND:'+toICS(pe)+'\r\n';
-      ics += 'SUMMARY:'+esc('Brygg: '+brewName+' – '+names[pi])+'\r\n';
+      ics += 'UID:brew-ph' + (pi + 1) + '-' + uid + '@bbb\r\n';
+      ics += 'DTSTART:' + toICS(ps) + '\r\n';
+      ics += 'DTEND:'   + toICS(pe) + '\r\n';
+      ics += 'SUMMARY:' + esc('BBB: ' + brewName + ' – ' + phaseNames[pi]) + '\r\n';
+      ics += 'DESCRIPTION:' + esc(phaseDesc) + '\r\n';
       ics += 'END:VEVENT\r\n';
     });
   }
@@ -1028,10 +1062,10 @@ function exportCalendar() {
   ics += 'END:VCALENDAR\r\n';
 
   const blob = new Blob([ics], {type:'text/calendar;charset=utf-8;'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'brygg-'+brewName.replace(/\s+/g,'-').toLowerCase()+'.ics';
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = 'BBB-' + brewName.replace(/\s+/g,'-') + '.ics';
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   URL.revokeObjectURL(url);
   showToast('📅 Kalender eksportert!');
