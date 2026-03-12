@@ -55,15 +55,26 @@
     }
 
     /* Brew title */
-    .brew-title-wrap { margin-bottom:10px; }
+    .brew-title-wrap {
+      margin-bottom:10px; display:flex; align-items:center; gap:8px;
+    }
     .brew-title-input {
-      width:100%; background:transparent; border:none; border-bottom:2px solid var(--cborder);
+      flex:1; background:transparent; border:none; border-bottom:2px solid var(--cborder);
       color:var(--accent); font-size:1.35rem; font-weight:800; letter-spacing:-.02em;
       padding:6px 4px; outline:none; text-align:center;
-      transition:border-color .2s;
+      transition:border-color .2s; min-width:0;
     }
     .brew-title-input:focus { border-color:var(--accent); }
     .brew-title-input::placeholder { color:rgba(244,164,41,.35); font-weight:600; }
+    .reset-btn {
+      display:flex; align-items:center; gap:4px; flex-shrink:0;
+      background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1);
+      border-radius:8px; color:var(--muted); font-size:.68rem; font-weight:600;
+      padding:6px 10px; cursor:pointer; white-space:nowrap;
+      transition:all .15s; -webkit-tap-highlight-color:transparent;
+    }
+    .reset-btn:hover { border-color:#f87171; color:#f87171; }
+    .reset-btn:active { transform:scale(.95); }
 
     /* Cards */
     .card {
@@ -418,6 +429,7 @@
   <!-- Brew name as editable title -->
   <div class="brew-title-wrap">
     <input class="brew-title-input" id="brew-name" type="text" placeholder="Navn på brygg (f.eks. Vinnerpils)" autocomplete="off">
+    <button class="reset-btn" onclick="resetState()" title="Nullstill og start nytt brygg">↺ Nytt brygg</button>
   </div>
 
   <!-- Start time -->
@@ -815,6 +827,7 @@ function onTimeChange() {
   startTime = new Date(base.getFullYear(), base.getMonth(), base.getDate(), hh, mm, 0, 0);
   render();
   scheduleNotifs();
+  saveState();
 }
 
 function setPhases(n) {
@@ -822,6 +835,7 @@ function setPhases(n) {
   [1,2,3].forEach(i => document.getElementById('pbtn'+i).classList.remove('active'));
   document.getElementById('pbtn'+n).classList.add('active');
   render();
+  saveState();
 }
 
 function toggleLock() {
@@ -839,7 +853,7 @@ function toggleLock() {
 
 function updDur(i, val) {
   const v = parseInt(val);
-  if (!isNaN(v) && v >= 0) { steps[i].duration = v; render(); scheduleNotifs(); }
+  if (!isNaN(v) && v >= 0) { steps[i].duration = v; render(); scheduleNotifs(); saveState(); }
 }
 
 // ============================================================
@@ -1187,6 +1201,61 @@ function showToast(msg) {
 }
 
 // ============================================================
+// STATE PERSISTENCE
+// ============================================================
+const STORAGE_KEY = 'bbb-last-brygg';
+
+function saveState() {
+  const state = {
+    brewName:  document.getElementById('brew-name').value,
+    brewers:   document.getElementById('brewers').value,
+    brewDate:  document.getElementById('brew-date').value,
+    startTime: document.getElementById('start-time').value,
+    phases:    phases,
+    durations: steps.map(s => s.duration),
+  };
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+function restoreState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return false;
+    const s = JSON.parse(raw);
+    if (s.brewName)  document.getElementById('brew-name').value  = s.brewName;
+    if (s.brewers)   document.getElementById('brewers').value    = s.brewers;
+    if (s.brewDate)  document.getElementById('brew-date').value  = s.brewDate;
+    if (s.startTime) document.getElementById('start-time').value = s.startTime;
+    if (Array.isArray(s.durations) && s.durations.length === steps.length) {
+      s.durations.forEach((d, i) => { steps[i].duration = d; });
+    }
+    if (typeof s.phases === 'number') setPhases(s.phases);
+    if (s.startTime || s.brewDate) onTimeChange();
+    return true;
+  } catch(e) { return false; }
+}
+
+function resetState() {
+  if (!confirm('Nullstille og starte nytt brygg?')) return;
+  localStorage.removeItem(STORAGE_KEY);
+  steps = DEFAULT_STEPS.map(s => ({...s}));
+  document.getElementById('brew-name').value  = '';
+  document.getElementById('brewers').value    = '';
+  document.getElementById('brew-date').value  = new Date().toISOString().split('T')[0];
+  document.getElementById('start-time').value = '';
+  startTime = null;
+  phases = 1;
+  locked = true;
+  [1,2,3].forEach(i => document.getElementById('pbtn'+i).classList.remove('active'));
+  document.getElementById('pbtn1').classList.add('active');
+  document.getElementById('lock-btn').textContent = '🔒 Lås opp varigheter';
+  document.getElementById('lock-btn').classList.remove('unlocked');
+  clearTimers();
+  render();
+  showToast('↺ Nullstilt – klar for nytt brygg!');
+}
+
+// ============================================================
 // INIT
 // ============================================================
 document.getElementById('start-time').addEventListener('input', onTimeChange);
@@ -1212,15 +1281,14 @@ if ('Notification' in window) {
   document.getElementById('notif-btn').style.display = 'none';
 }
 
-// Default brew date = today
-document.getElementById('brew-date').value = new Date().toISOString().split('T')[0];
+// Restore last brew, or default to today's date
+if (!restoreState()) {
+  document.getElementById('brew-date').value = new Date().toISOString().split('T')[0];
+}
 
-  // Restore brewers from localStorage
-  const savedBrewers = localStorage.getItem('bbb-brewers');
-  if (savedBrewers) document.getElementById('brewers').value = savedBrewers;
-  document.getElementById('brewers').addEventListener('input', function() {
-    localStorage.setItem('bbb-brewers', this.value);
-  });
+  // Save on brew-name and brewers input
+  document.getElementById('brew-name').addEventListener('input', saveState);
+  document.getElementById('brewers').addEventListener('input', saveState);
 
 // Live countdown
 cInterval = setInterval(() => { if (startTime) { renderNext(); renderProgress(); } }, 1000);
