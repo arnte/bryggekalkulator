@@ -372,13 +372,16 @@
 
     /* Toast */
     #toast {
-      position:fixed; bottom:70px; left:50%;
-      transform:translateX(-50%) translateY(80px);
+      position:fixed;
+      bottom:calc(64px + env(safe-area-inset-bottom));
+      left:50%;
+      transform:translateX(-50%) translateY(90px);
       background:#1a3050; border:1px solid var(--accent);
       border-radius:12px; padding:11px 20px; color:var(--text);
       font-size:.88rem; font-weight:600; z-index:999;
       transition:transform .3s ease; white-space:nowrap;
       box-shadow:0 4px 20px rgba(0,0,0,0.5);
+      cursor:pointer;
     }
     #toast.show { transform:translateX(-50%) translateY(0); }
 
@@ -1231,8 +1234,13 @@ function showToast(msg) {
   const el = document.getElementById('toast');
   el.textContent = msg; el.classList.add('show');
   clearTimeout(toastTm);
-  toastTm = setTimeout(() => el.classList.remove('show'), 3200);
+  toastTm = setTimeout(() => el.classList.remove('show'), 5000);
 }
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('toast').addEventListener('click', () => {
+    document.getElementById('toast').classList.remove('show');
+  });
+});
 
 // ============================================================
 // STATE PERSISTENCE
